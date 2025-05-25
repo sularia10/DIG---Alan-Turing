@@ -1,0 +1,14 @@
+{
+  "name": "proyecto-csv-api",
+  "version": "1.0.0",
+  "description": "API para leer datos de un CSV y mostrarlos en una página web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "csv-parse": "^5.5.0",
+    "cors": "^2.8.5"
+  }
+}

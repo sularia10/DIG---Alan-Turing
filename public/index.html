@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consumo de Agua en Cataluña por Comarcas</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- jQuery (required for DataTables) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <!-- Prop Types -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+  <!-- React and ReactDOM -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <!-- Babel for JSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <!-- Recharts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.15.0/Recharts.min.js"></script>
+  <style>
+    /* Custom styles for table and charts */
+    #waterTable th, #waterTable td {
+      text-align: center;
+    }
+    .loading {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- Main container -->
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold text-center mb-6">Consumo de Agua en Cataluña por Comarcas (2012-2023)</h1>
+    
+    <!-- Loading message -->
+    <div id="loading" class="loading">Cargando datos...</div>
+    
+    <!-- Table container -->
+    <div id="tableContainer" class="hidden mb-8">
+      <table id="waterTable" class="display w-full">
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Código Comarca</th>
+            <th>Comarca</th>
+            <th>Población</th>
+            <th>Doméstico (m³)</th>
+            <th>Económico (m³)</th>
+            <th>Total (m³)</th>
+            <th>Consumo per Cápita (L/día)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <!-- Chart containers -->
+    <div id="charts" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Total Consumption Bar Chart -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-4">Consumo Total de Agua por Comarca (2023)</h2>
+        <div id="totalConsumptionChart"></div>
+      </div>
+      <!-- Per Capita Consumption Line Chart -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-4">Consumo Doméstico per Cápita por Año (Promedio)</h2>
+        <div id="perCapitaChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/babel">
+    // Initializing React root
+    const root = ReactDOM.createRoot(document.getElementById('charts'));
+
+    // Defining main App component
+    const App = ({ data }) => {
+      // Filtering data for 2023 for the bar chart
+      const data2023 = data.filter(row => row['Any'] === 2023);
+
+      // Aggregating data for average per capita consumption by year
+      const years = [...new Set(data.map(row => row['Any']))].sort();
+      const perCapitaByYear = years.map(year => {
+        const yearData = data.filter(row => row['Any'] === year);
+        const avgPerCapita = yearData.reduce((sum, row) => sum + row['Consum domèstic per càpita'], 0) / yearData.length;
+        return { year, perCapita: avgPerCapita };
+      });
+
+      // Formatting large numbers for chart labels
+      const formatNumber = (num) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+        return num;
+      };
+
+      return (
+        <div>
+          {/* Total Consumption Bar Chart */}
+          <Recharts.ResponsiveContainer width="100%" height={400}>
+            <Recharts.BarChart data={data2023} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
+              <Recharts.CartesianGrid strokeDasharray="3 3" />
+              <Recharts.XAxis dataKey="Comarca" angle={-45} textAnchor="end" interval={0} style={{ fontSize: 12 }} />
+              <Recharts.YAxis tickFormatter={formatNumber} style={{ fontSize: 12 }} />
+              <Recharts.Tooltip formatter={(value) => `${formatNumber(value)} m³`} />
+              <Recharts.Legend />
+              <Recharts.Bar dataKey="Total" fill="#3b82f6" name="Consumo Total (m³)" />
+            </Recharts.BarChart>
+          </Recharts.ResponsiveContainer>
+
+          {/* Per Capita Consumption Line Chart */}
+          <Recharts.ResponsiveContainer width="100%" height={400}>
+            <Recharts.LineChart data={perCapitaByYear} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <Recharts.CartesianGrid strokeDasharray="3 3" />
+              <Recharts.XAxis dataKey="year" style={{ fontSize: 12 }} />
+              <Recharts.YAxis label={{ value: 'L/día', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }} style={{ fontSize: 12 }} />
+              <Recharts.Tooltip formatter={(value) => `${value.toFixed(2)} L/día`} />
+              <Recharts.Legend />
+              <Recharts.Line type="monotone" dataKey="perCapita" stroke="#10b981" name="Consumo per Cápita (L/día)" />
+            </Recharts.LineChart>
+          </Recharts.ResponsiveContainer>
+        </div>
+      );
+    };
+
+    // Fetching and processing data
+    async function cargarDatos() {
+      try {
+        const response = await fetch('/api/datos');
+        const data = await response.json();
+
+        // Hiding loading message and showing content
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('tableContainer').classList.remove('hidden');
+        document.getElementById('charts').classList.remove('hidden');
+
+        // Initializing DataTable
+        $('#waterTable').DataTable({
+          data: data,
+          columns: [
+            { data: 'Any' },
+            { data: 'Codi comarca' },
+            { data: 'Comarca' },
+            { data: 'Població', render: (val) => val.toLocaleString() },
+            { data: 'Domèstic xarxa', render: (val) => val.toLocaleString() },
+            { data: 'Activitats econòmiques i fonts pròpies', render: (val) => val.toLocaleString() },
+            { data: 'Total', render: (val) => val.toLocaleString() },
+            { data: 'Consum domèstic per càpita', render: (val) => val.toFixed(2) }
+          ],
+          pageLength: 10,
+          language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+          }
+        });
+
+        // Rendering charts
+        root.render(<App data={data} />);
+      } catch (error) {
+        console.error('Error al cargar los datos:', error);
+        document.getElementById('loading').textContent = 'Error al cargar los datos';
+      }
+    }
+
+    // Loading data on page load
+    window.onload = cargarDatos;
+  </script>
+</body>
+</html>
